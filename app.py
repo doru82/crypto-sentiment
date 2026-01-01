@@ -10,6 +10,7 @@ import altair as alt
 from typing import List, Dict, Optional
 import random
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import urllib.parse
 
 analyzer = SentimentIntensityAnalyzer()
 
@@ -25,24 +26,76 @@ def get_api_key(key_name: str, user_key: Optional[str] = None) -> Optional[str]:
     3. Environment variables
     4. None
     """
-    # Priority 1: User provided their own key
     if user_key:
         return user_key
     
-    # Priority 2: App's shared keys from Streamlit secrets
     try:
         if hasattr(st, 'secrets') and key_name in st.secrets:
             return st.secrets[key_name]
     except:
         pass
     
-    # Priority 3: Environment variables (for local development)
     env_key = os.getenv(key_name)
     if env_key:
         return env_key
     
-    # No key available
     return None
+
+
+# ========================================
+# SENTIMENT GRADING SYSTEM
+# ========================================
+
+def get_sentiment_grade(score: float) -> Dict[str, str]:
+    """Convert sentiment score to letter grade with emoji and description."""
+    if score >= 0.5:
+        return {
+            "grade": "A+",
+            "emoji": "🚀",
+            "description": "Extremely Bullish",
+            "color": "#10b981",
+            "advice": "Strong positive sentiment! Community is very optimistic."
+        }
+    elif score >= 0.3:
+        return {
+            "grade": "A",
+            "emoji": "📈",
+            "description": "Very Bullish",
+            "color": "#34d399",
+            "advice": "High positive sentiment. Good vibes in the community."
+        }
+    elif score >= 0.1:
+        return {
+            "grade": "B",
+            "emoji": "😊",
+            "description": "Bullish",
+            "color": "#6ee7b7",
+            "advice": "Moderately positive sentiment. Cautiously optimistic."
+        }
+    elif score >= -0.1:
+        return {
+            "grade": "C",
+            "emoji": "😐",
+            "description": "Neutral",
+            "color": "#fbbf24",
+            "advice": "Mixed sentiment. Community is divided or uncertain."
+        }
+    elif score >= -0.3:
+        return {
+            "grade": "D",
+            "emoji": "📉",
+            "description": "Bearish",
+            "color": "#fb923c",
+            "advice": "Moderately negative sentiment. Proceed with caution."
+        }
+    else:
+        return {
+            "grade": "F",
+            "emoji": "💀",
+            "description": "Extremely Bearish",
+            "color": "#ef4444",
+            "advice": "Strong negative sentiment! High fear in the community."
+        }
 
 
 # ========================================
@@ -128,14 +181,13 @@ def fetch_ct_nitter(query: str, limit: int, proxies_list=None) -> tuple[List[Dic
         return [], "Disabled"
     
     items = []
-    # Updated list with working instances (December 2025)
     nitter_instances = [
         "nitter.poast.org",
         "nitter.privacydev.net", 
         "nitter.woodland.cafe",
         "nitter.lucabased.xyz",
         "nitter.mint.lgbt",
-        "xcancel.com",  # Alternative X mirror
+        "xcancel.com",
     ]
     
     for instance in nitter_instances:
@@ -187,11 +239,10 @@ def fetch_ct_rapidapi(query: str, limit: int, api_key: Optional[str]) -> tuple[L
     if limit == 0:
         return [], "Disabled"
     
-    # Get API key (user's or app's)
     key = get_api_key("RAPIDAPI_KEY", api_key)
     
     if not key:
-        return [], "⚠️ No API key (enable in sidebar)"
+        return [], "⚠️ No API key"
     
     items = []
     
@@ -213,7 +264,7 @@ def fetch_ct_rapidapi(query: str, limit: int, api_key: Optional[str]) -> tuple[L
         r = requests.get(url, headers=headers, params=params, timeout=15)
         
         if r.status_code == 429:
-            return [], "⚠️ Rate limit reached (try your own key)"
+            return [], "⚠️ Rate limit reached"
         
         if r.status_code != 200:
             return [], f"❌ API error: {r.status_code}"
@@ -262,7 +313,7 @@ def fetch_reddit_json(subs: List[str], query: str, limit: int, proxies_list=None
                 "sort": "new",
                 "limit": per_sub_limit,
                 "restrict_sr": "true",
-                "t": "month"  # Changed from week to month for more results
+                "t": "month"
             }
             
             headers = {
@@ -284,7 +335,6 @@ def fetch_reddit_json(subs: List[str], query: str, limit: int, proxies_list=None
             posts = data.get("data", {}).get("children", [])
             
             if not posts:
-                # If no search results, try getting hot posts from subreddit
                 url2 = f"https://www.reddit.com/r/{sub}/hot.json"
                 params2 = {"limit": per_sub_limit}
                 r2 = safe_request(url2, params=params2, headers=headers, proxies_list=proxies_list)
@@ -300,7 +350,6 @@ def fetch_reddit_json(subs: List[str], query: str, limit: int, proxies_list=None
                 p = post.get("data", {})
                 text = f"{p.get('title', '')} {p.get('selftext', '')}"
                 
-                # Filter by query in text if we got hot posts
                 if query.lower() not in text.lower():
                     continue
                 
@@ -319,7 +368,7 @@ def fetch_reddit_json(subs: List[str], query: str, limit: int, proxies_list=None
                 if len(items) >= limit:
                     break
             
-            time.sleep(0.5)  # Reduced from 1s for faster fetching
+            time.sleep(0.5)
             
         except Exception as e:
             errors.append(sub)
@@ -344,11 +393,10 @@ def fetch_news(query: str, days: int, limit: int, api_key: Optional[str]) -> tup
     if limit == 0:
         return [], "Disabled"
     
-    # Get API key (user's or app's)
     key = get_api_key("NEWSAPI_KEY", api_key)
     
     if not key:
-        return [], "⚠️ No API key (enable in sidebar)"
+        return [], "⚠️ No API key"
 
     start = (datetime.utcnow() - timedelta(days=days)).strftime("%Y-%m-%d")
     url = f"https://newsapi.org/v2/everything?q={query}&from={start}&sortBy=publishedAt&language=en&pageSize={limit}"
@@ -357,7 +405,7 @@ def fetch_news(query: str, days: int, limit: int, api_key: Optional[str]) -> tup
         r = requests.get(url, headers={"X-Api-Key": key}, timeout=15)
         
         if r.status_code == 429:
-            return [], "⚠️ Rate limit reached (try your own key)"
+            return [], "⚠️ Rate limit reached"
         
         if r.status_code != 200:
             return [], f"❌ API error: {r.status_code}"
@@ -386,7 +434,7 @@ def fetch_news(query: str, days: int, limit: int, api_key: Optional[str]) -> tup
 # ========================================
 
 def fetch_coingecko_trending() -> tuple[List[Dict], str]:
-    """CoinGecko trending coins - always works, no API key."""
+    """CoinGecko trending coins."""
     try:
         r = requests.get("https://api.coingecko.com/api/v3/search/trending", timeout=10)
         
@@ -396,12 +444,11 @@ def fetch_coingecko_trending() -> tuple[List[Dict], str]:
         items = []
         coins = r.json().get("coins", [])
         
-        for coin_data in coins[:7]:  # Top 7 trending
+        for coin_data in coins[:7]:
             coin = coin_data.get("item", {})
             text = f"Trending: {coin.get('name')} ({coin.get('symbol')}) - Rank #{coin.get('market_cap_rank', 'N/A')}"
             
-            # Trending is inherently positive sentiment
-            score = 0.3  # Moderately positive
+            score = 0.3
             
             items.append({
                 "source": "coingecko_trending",
@@ -419,7 +466,7 @@ def fetch_coingecko_trending() -> tuple[List[Dict], str]:
 
 
 def fetch_cryptocompare_news(query: str, limit: int) -> tuple[List[Dict], str]:
-    """CryptoCompare News API - free, no key needed."""
+    """CryptoCompare News API."""
     if limit == 0:
         return [], "Disabled"
     
@@ -435,12 +482,10 @@ def fetch_cryptocompare_news(query: str, limit: int) -> tuple[List[Dict], str]:
         items = []
         articles = r.json().get("Data", [])
         
-        # Filter by query
         filtered = [a for a in articles if query.lower() in a.get("title", "").lower() or 
                     query.lower() in a.get("body", "").lower()]
         
         if not filtered:
-            # If no specific matches, take general crypto news
             filtered = articles[:limit]
         
         for article in filtered[:limit]:
@@ -463,14 +508,13 @@ def fetch_cryptocompare_news(query: str, limit: int) -> tuple[List[Dict], str]:
 
 
 def fetch_cryptopanic(query: str, limit: int) -> tuple[List[Dict], str]:
-    """CryptoPanic API - free news aggregator."""
+    """CryptoPanic API."""
     if limit == 0:
         return [], "Disabled"
     
     items = []
     
     try:
-        # Try without auth first (public endpoint)
         url = "https://cryptopanic.com/api/free/v1/posts/"
         params = {
             "auth_token": "free",
@@ -479,7 +523,6 @@ def fetch_cryptopanic(query: str, limit: int) -> tuple[List[Dict], str]:
             "filter": "rising",
         }
         
-        # If query is a known currency, add it
         known_currencies = ["BTC", "ETH", "AVAX", "SOL", "ADA", "DOT", "MATIC", "LINK"]
         if query.upper() in known_currencies:
             params["currencies"] = query.upper()
@@ -487,7 +530,6 @@ def fetch_cryptopanic(query: str, limit: int) -> tuple[List[Dict], str]:
         r = requests.get(url, params=params, timeout=10)
         
         if r.status_code != 200:
-            # Fallback: try v1 endpoint without specific currency
             url = "https://cryptopanic.com/api/free/v1/posts/"
             params = {
                 "auth_token": "free",
@@ -497,11 +539,10 @@ def fetch_cryptopanic(query: str, limit: int) -> tuple[List[Dict], str]:
             r = requests.get(url, params=params, timeout=10)
             
             if r.status_code != 200:
-                return [], f"❌ API unavailable (try with API key)"
+                return [], f"❌ API unavailable"
         
         results = r.json().get("results", [])
         
-        # Filter by query in title if not using currency filter
         if "currencies" not in params:
             results = [a for a in results if query.lower() in a.get("title", "").lower()]
         
@@ -520,7 +561,7 @@ def fetch_cryptopanic(query: str, limit: int) -> tuple[List[Dict], str]:
             })
         
         if not items:
-            return [], "⚠️ No results (try BTC, ETH, etc.)"
+            return [], "⚠️ No results"
         
         return items, f"✅ {len(items)} articles"
     except Exception as e:
@@ -528,12 +569,11 @@ def fetch_cryptopanic(query: str, limit: int) -> tuple[List[Dict], str]:
 
 
 def fetch_coinmarketcap_news(query: str, limit: int) -> tuple[List[Dict], str]:
-    """CoinMarketCap news via their public API."""
+    """CoinMarketCap news."""
     if limit == 0:
         return [], "Disabled"
     
     try:
-        # CMC has a public RSS-like feed
         url = f"https://coinmarketcap.com/headlines/news/"
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
@@ -544,19 +584,16 @@ def fetch_coinmarketcap_news(query: str, limit: int) -> tuple[List[Dict], str]:
         if r.status_code != 200:
             return [], "❌ Scraping blocked"
         
-        # Simple scraping for headlines
         import re
         headlines = re.findall(r'<h3[^>]*>(.*?)</h3>', r.text)
         
         items = []
         for headline in headlines[:limit]:
-            # Clean HTML
             clean_headline = re.sub(r'<[^>]+>', '', headline).strip()
             
             if not clean_headline or len(clean_headline) < 10:
                 continue
             
-            # Filter by query
             if query.lower() not in clean_headline.lower():
                 continue
             
@@ -689,7 +726,6 @@ def fetch_all_parallel(config):
     with ThreadPoolExecutor(max_workers=10) as executor:
         futures = {}
         
-        # Submit all tasks
         if config['ct_limit'] > 0:
             if config['ct_method'] in ["Nitter (Free)", "All"]:
                 futures['ct_nitter'] = executor.submit(
@@ -732,7 +768,6 @@ def fetch_all_parallel(config):
                 config['cryptopanic_limit']
             )
         
-        # New sources
         if config.get('cryptocompare_limit', 0) > 0:
             futures['cryptocompare'] = executor.submit(
                 fetch_cryptocompare_news,
@@ -757,7 +792,6 @@ def fetch_all_parallel(config):
         
         futures['fear_greed'] = executor.submit(fetch_fear_greed)
         
-        # Collect results
         for name, future in futures.items():
             try:
                 results[name] = future.result(timeout=30)
@@ -772,13 +806,13 @@ def fetch_all_parallel(config):
 # ========================================
 
 st.set_page_config(
-    page_title="Crypto Sentiment Pro",
-    page_icon="🚀",
+    page_title="CryptoVibes - Sentiment Analysis",
+    page_icon="🔮",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for better UI
+# Custom CSS
 st.markdown("""
 <style>
     .main-header {
@@ -805,20 +839,39 @@ st.markdown("""
         background-color: #ef4444;
         color: white;
     }
+    .grade-card {
+        padding: 2rem;
+        border-radius: 16px;
+        text-align: center;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        margin: 1rem 0;
+    }
+    .grade-emoji {
+        font-size: 4rem;
+        margin-bottom: 0.5rem;
+    }
+    .grade-letter {
+        font-size: 3rem;
+        font-weight: 700;
+        margin: 0.5rem 0;
+    }
+    .grade-desc {
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin: 0.5rem 0;
+    }
 </style>
 """, unsafe_allow_html=True)
 
 # Header
-st.markdown('<h1 class="main-header">🚀 Crypto Sentiment Pro</h1>', unsafe_allow_html=True)
+st.markdown('<h1 class="main-header">🔮 CryptoVibes</h1>', unsafe_allow_html=True)
 st.caption("Real-time sentiment analysis from Twitter, Reddit, News & more")
 
 # Sidebar Configuration
 with st.sidebar:
-    st.image("https://img.icons8.com/fluency/96/000000/bitcoin.png", width=80)
-    
     st.markdown("### 🎯 Analysis Settings")
     
-    query = st.text_input("Token/Symbol", "AVAX", help="Enter crypto symbol (BTC, ETH, AVAX, etc.)")
+    query = st.text_input("Token/Symbol", "BTC", help="Enter crypto symbol (BTC, ETH, AVAX, etc.)")
     lookback = st.slider("Lookback Days", 1, 30, 7)
     
     st.markdown("---")
@@ -836,17 +889,17 @@ with st.sidebar:
         reddit_limit = st.slider("Posts", 0, 150, 60, key="reddit")
         subs_in = st.text_area(
             "Subreddits (one per line)",
-            "Avalanche\nCryptoCurrency\ndefi"
+            "bitcoin\ncryptocurrency\nbtc"
         )
         subs = [s.strip() for s in subs_in.splitlines() if s.strip()]
     
     with st.expander("📰 News & Feeds"):
-        news_limit = st.slider("News Articles (NewsAPI)", 0, 50, 0, key="news")
+        news_limit = st.slider("News Articles (NewsAPI)", 0, 50, 20, key="news")
         cryptocompare_limit = st.slider("CryptoCompare News", 0, 30, 15, key="cryptocompare")
         cryptopanic_limit = st.slider("CryptoPanic", 0, 30, 10, key="cryptopanic")
     
     with st.expander("🔥 Additional Sources"):
-        trending_enabled = st.checkbox("CoinGecko Trending", value=True, help="Top trending coins (always bullish)")
+        trending_enabled = st.checkbox("CoinGecko Trending", value=True, help="Top trending coins")
         cmc_limit = st.slider("CoinMarketCap Headlines", 0, 20, 10, key="cmc")
     
     st.markdown("---")
@@ -855,37 +908,47 @@ with st.sidebar:
     use_own_keys = st.checkbox(
         "🔓 Use my own API keys",
         value=False,
-        help="By default, we use shared free-tier keys. Enable this to use your own keys for unlimited access."
+        help="By default, we use shared free-tier keys"
     )
     
     if use_own_keys:
-        st.caption("⚡ Power user mode - add your own keys for unlimited usage")
-        newsapi_key = st.text_input("NewsAPI", type="password", help="Get free key at newsapi.org")
-        rapidapi_key = st.text_input("RapidAPI", type="password", help="For premium CT data")
+        st.caption("⚡ Power user mode")
+        newsapi_key = st.text_input("NewsAPI", type="password")
+        rapidapi_key = st.text_input("RapidAPI", type="password")
     else:
-        st.caption("✅ Using shared free-tier keys (limited usage)")
-        # Use app's built-in keys
-        newsapi_key = None  # Will use st.secrets in code
-        rapidapi_key = None  # Will use st.secrets in code
+        st.caption("✅ Using shared keys")
+        newsapi_key = None
+        rapidapi_key = None
     
     st.markdown("---")
-    use_proxies = st.checkbox("🌐 Use Proxies (experimental)", help="May help avoid rate limits")
+    use_proxies = st.checkbox("🌐 Use Proxies (experimental)")
     
     st.markdown("---")
     analyze_btn = st.button("🔍 **Analyze Sentiment**", use_container_width=True, type="primary")
+    
+    # Buy Me a Coffee Button
+    st.markdown("---")
+    st.markdown("### 💝 Support CryptoVibes")
+    st.markdown("""
+    <a href="https://www.buymeacoffee.com/cryptovibes" target="_blank">
+        <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" 
+             alt="Buy Me A Coffee" 
+             style="height: 50px !important;width: 180px !important;">
+    </a>
+    """, unsafe_allow_html=True)
+    st.caption("Help keep CryptoVibes running! ☕")
 
 # Main content
 if not analyze_btn and 'results' not in st.session_state:
-    # Show info banner
     has_shared_keys = (
         get_api_key("NEWSAPI_KEY") is not None or 
         get_api_key("RAPIDAPI_KEY") is not None
     )
     
     if has_shared_keys:
-        st.success("🎉 **Ready to use!** This app uses shared free-tier API keys. For unlimited access, enable \"Use my own API keys\" in the sidebar.")
+        st.success("🎉 **Ready to use!** Using shared free-tier API keys for instant analysis.")
     else:
-        st.warning("⚠️ **No shared API keys configured.** Some features require API keys. Enable \"Use my own API keys\" in the sidebar or deploy with secrets configured.")
+        st.warning("⚠️ **Limited mode.** Some features require API keys.")
     
     col1, col2, col3 = st.columns(3)
     
@@ -901,12 +964,11 @@ if not analyze_btn and 'results' not in st.session_state:
     st.markdown("---")
     st.markdown("### 🚀 Getting Started")
     st.markdown("""
-    1. **Enter a token symbol** (BTC, ETH, AVAX, etc.)
+    1. **Enter a token symbol** (BTC, ETH, SOL, etc.)
     2. **Configure data sources** in the sidebar
-    3. **Add API keys** for premium features (optional)
-    4. **Click Analyze** to start!
+    3. **Click Analyze** to start!
     
-    💡 **Tip**: Start with Nitter for free CT data, then add API keys for better coverage.
+    💡 **Tip**: Popular tokens like BTC, ETH, and SOL have the most data.
     """)
     
     st.stop()
@@ -932,7 +994,7 @@ if analyze_btn:
         'proxies': get_free_proxies() if use_proxies else None
     }
     
-    with st.spinner("🔄 Fetching data from all sources..."):
+    with st.spinner(f"🔮 Analyzing crypto vibes for ${query}..."):
         results = fetch_all_parallel(config)
         st.session_state['results'] = results
         st.session_state['config'] = config
@@ -945,47 +1007,36 @@ if 'results' in st.session_state:
     # Status badges
     st.markdown("### 📡 Data Sources Status")
     
-    # Create dynamic columns based on enabled sources
     enabled_sources = []
     source_info = []
     
     if config.get('ct_limit', 0) > 0:
         if 'ct_nitter' in results:
-            enabled_sources.append('ct_nitter')
             source_info.append(('CT Nitter', results['ct_nitter']))
         if 'ct_rapidapi' in results:
-            enabled_sources.append('ct_rapidapi')
             source_info.append(('CT Rapid', results['ct_rapidapi']))
     
     if config.get('reddit_limit', 0) > 0 and 'reddit' in results:
-        enabled_sources.append('reddit')
         source_info.append(('Reddit', results['reddit']))
     
     if config.get('news_limit', 0) > 0 and 'news' in results:
-        enabled_sources.append('news')
         source_info.append(('NewsAPI', results['news']))
     
     if config.get('cryptocompare_limit', 0) > 0 and 'cryptocompare' in results:
-        enabled_sources.append('cryptocompare')
         source_info.append(('CryptoCompare', results['cryptocompare']))
     
     if config.get('cryptopanic_limit', 0) > 0 and 'cryptopanic' in results:
-        enabled_sources.append('cryptopanic')
         source_info.append(('CryptoPanic', results['cryptopanic']))
     
     if config.get('cmc_limit', 0) > 0 and 'cmc' in results:
-        enabled_sources.append('cmc')
         source_info.append(('CMC', results['cmc']))
     
     if config.get('trending_enabled', False) and 'trending' in results:
-        enabled_sources.append('trending')
         source_info.append(('Trending', results['trending']))
     
     if 'coingecko' in results:
-        enabled_sources.append('coingecko')
         source_info.append(('CoinGecko', results['coingecko']))
     
-    # Create columns for badges
     num_cols = min(len(source_info), 6)
     if num_cols > 0:
         cols = st.columns(num_cols)
@@ -1001,7 +1052,6 @@ if 'results' in st.session_state:
                 unsafe_allow_html=True
             )
         
-        # If more than 6 sources, show in second row
         if len(source_info) > 6:
             cols2 = st.columns(min(len(source_info) - 6, 6))
             for i, (label, result) in enumerate(source_info[6:12]):
@@ -1028,34 +1078,61 @@ if 'results' in st.session_state:
     df = pd.DataFrame(all_data)
     
     if df.empty:
-        st.error("❌ No sentiment data collected. Try different settings or add API keys.")
+        st.error("❌ No sentiment data collected. Try different settings or popular tokens like BTC, ETH, or SOL.")
         st.stop()
     
-    # Main metrics
-    st.markdown("### 💬 Sentiment Overview")
-    
+    # Calculate overall sentiment
     overall_sentiment = df["compound"].mean()
-    sentiment_emoji_icon = sentiment_emoji(overall_sentiment)
+    grade_info = get_sentiment_grade(overall_sentiment)
     
-    col1, col2, col3, col4 = st.columns(4)
+    # SENTIMENT GRADE CARD
+    st.markdown(f"""
+    <div class="grade-card" style="background: linear-gradient(135deg, {grade_info['color']}22, {grade_info['color']}44); border: 3px solid {grade_info['color']};">
+        <div class="grade-emoji">{grade_info['emoji']}</div>
+        <div class="grade-letter" style="color: {grade_info['color']};">{grade_info['grade']}</div>
+        <div class="grade-desc" style="color: {grade_info['color']};">{grade_info['description']}</div>
+        <p style="font-size: 1.1rem; margin-top: 1rem; color: #666;">{grade_info['advice']}</p>
+        <p style="font-size: 0.9rem; color: #888; margin-top: 0.5rem;">Sentiment Score: {overall_sentiment:.3f}</p>
+    </div>
+    """, unsafe_allow_html=True)
     
-    with col1:
-        st.metric(
-            f"{sentiment_emoji_icon} Overall Sentiment",
-            f"{overall_sentiment:.3f}",
-            delta="Bullish" if overall_sentiment > 0 else "Bearish"
-        )
+    # Share on Twitter Button
+    tweet_text = f"Just analyzed ${config['query']} sentiment on CryptoVibes! Grade: {grade_info['grade']} {grade_info['emoji']} - {grade_info['description']}. Check it out!"
+    tweet_url = "https://cryptovibes.streamlit.app"
+    twitter_url = f"https://twitter.com/intent/tweet?text={urllib.parse.quote(tweet_text)}&url={urllib.parse.quote(tweet_url)}"
+    
+    st.markdown(f"""
+    <div style="text-align: center; margin: 1rem 0;">
+        <a href="{twitter_url}" target="_blank" style="
+            display: inline-block;
+            background: #1DA1F2;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1.1rem;
+        ">
+            🐦 Share on Twitter
+        </a>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.markdown("---")
+    
+    # Main metrics
+    st.markdown("### 💬 Sentiment Breakdown")
     
     label_counts = df["label"].value_counts()
-    with col2:
-        st.metric("✅ Positive", label_counts.get("positive", 0))
-    with col3:
-        st.metric("❌ Negative", label_counts.get("negative", 0))
-    with col4:
-        st.metric("⚪ Neutral", label_counts.get("neutral", 0))
+    col1, col2, col3, col4 = st.columns(4)
+    
+    col1.metric("📊 Total Items", len(df))
+    col2.metric("✅ Positive", label_counts.get("positive", 0))
+    col3.metric("❌ Negative", label_counts.get("negative", 0))
+    col4.metric("⚪ Neutral", label_counts.get("neutral", 0))
     
     # Source breakdown
-    st.markdown("### 📊 Sentiment by Source")
+    st.markdown("### 📈 Sentiment by Source")
     
     agg = (
         df.groupby("source", as_index=False)
@@ -1084,7 +1161,6 @@ if 'results' in st.session_state:
         st.altair_chart(chart, use_container_width=True)
     
     with col2:
-        # Try styled dataframe, fallback to plain if matplotlib not available
         try:
             st.dataframe(
                 agg.style.background_gradient(cmap='RdYlGn', subset=['mean_compound']),
@@ -1161,7 +1237,6 @@ if 'results' in st.session_state:
     show_cols = ["source", "dt", "label", "compound", "title", "url"]
     df_show = df.sort_values("compound", ascending=False)
     
-    # Add filters
     col1, col2 = st.columns(2)
     with col1:
         filter_source = st.multiselect("Filter by source", df["source"].unique())
@@ -1184,7 +1259,7 @@ if 'results' in st.session_state:
     st.download_button(
         "⬇️ Download Full Dataset (CSV)",
         csv,
-        f"sentiment_{config['query']}_{datetime.now().strftime('%Y%m%d')}.csv",
+        f"cryptovibes_{config['query']}_{datetime.now().strftime('%Y%m%d')}.csv",
         "text/csv",
         use_container_width=True
     )
@@ -1193,4 +1268,9 @@ if 'results' in st.session_state:
     
     # Footer
     st.markdown("---")
-    st.caption("Made with ❤️ | Data sources: Nitter, Reddit, NewsAPI, CryptoPanic, CoinGecko | Not financial advice")
+    st.markdown("""
+    <div style="text-align: center; color: #666; padding: 2rem 0;">
+        <p>Made with ❤️ by CryptoVibes | Not financial advice</p>
+        <p style="font-size: 0.9rem;">Data sources: Twitter, Reddit, NewsAPI, CryptoPanic, CoinGecko</p>
+    </div>
+    """, unsafe_allow_html=True)
