@@ -925,18 +925,6 @@ with st.sidebar:
     
     st.markdown("---")
     analyze_btn = st.button("🔍 **Analyze Sentiment**", use_container_width=True, type="primary")
-    
-    # Buy Me a Coffee Button
-    st.markdown("---")
-    st.markdown("### 💝 Support CryptoVibes")
-    st.markdown("""
-    <a href="https://www.buymeacoffee.com/cryptovibes" target="_blank">
-        <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" 
-             alt="Buy Me A Coffee" 
-             style="height: 50px !important;width: 180px !important;">
-    </a>
-    """, unsafe_allow_html=True)
-    st.caption("Help keep CryptoVibes running! ☕")
 
 # Main content
 if not analyze_btn and 'results' not in st.session_state:
@@ -1096,27 +1084,56 @@ if 'results' in st.session_state:
     </div>
     """, unsafe_allow_html=True)
     
-    # Share on Twitter Button
-    tweet_text = f"Just analyzed ${config['query']} sentiment on CryptoVibes! Grade: {grade_info['grade']} {grade_info['emoji']} - {grade_info['description']}. Check it out!"
-    tweet_url = "https://cryptovibes.streamlit.app"
-    twitter_url = f"https://twitter.com/intent/tweet?text={urllib.parse.quote(tweet_text)}&url={urllib.parse.quote(tweet_url)}"
+    # Share on Twitter & Buy Me a Coffee - Side by Side
+    col1, col2 = st.columns(2)
     
-    st.markdown(f"""
-    <div style="text-align: center; margin: 1rem 0;">
-        <a href="{twitter_url}" target="_blank" style="
-            display: inline-block;
-            background: #1DA1F2;
-            color: white;
-            padding: 12px 24px;
-            border-radius: 8px;
-            text-decoration: none;
-            font-weight: 600;
-            font-size: 1.1rem;
-        ">
-            🐦 Share on Twitter
-        </a>
-    </div>
-    """, unsafe_allow_html=True)
+    with col1:
+        tweet_text = f"Just analyzed ${config['query']} sentiment on CryptoVibes! Grade: {grade_info['grade']} {grade_info['emoji']} - {grade_info['description']}. Check it out!"
+        tweet_url = "https://cryptovibes.streamlit.app"
+        twitter_url = f"https://twitter.com/intent/tweet?text={urllib.parse.quote(tweet_text)}&url={urllib.parse.quote(tweet_url)}"
+        
+        st.markdown(f"""
+        <div style="text-align: center;">
+            <a href="{twitter_url}" target="_blank" style="
+                display: inline-block;
+                background: #1DA1F2;
+                color: white;
+                padding: 16px 32px;
+                border-radius: 12px;
+                text-decoration: none;
+                font-weight: 600;
+                font-size: 1.2rem;
+                box-shadow: 0 4px 6px rgba(29, 161, 242, 0.3);
+                transition: all 0.3s ease;
+            " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 12px rgba(29, 161, 242, 0.4)';" 
+               onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 6px rgba(29, 161, 242, 0.3)';">
+                🐦 Share on Twitter
+            </a>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown("""
+        <div style="text-align: center;">
+            <a href="https://www.buymeacoffee.com/cryptovibes" target="_blank" style="
+                display: inline-block;
+                background: linear-gradient(135deg, #FFDD00 0%, #FBB034 100%);
+                color: #000000;
+                padding: 16px 32px;
+                border-radius: 12px;
+                text-decoration: none;
+                font-weight: 600;
+                font-size: 1.2rem;
+                box-shadow: 0 4px 6px rgba(255, 221, 0, 0.3);
+                transition: all 0.3s ease;
+            " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 12px rgba(255, 221, 0, 0.4)';" 
+               onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 6px rgba(255, 221, 0, 0.3)';">
+                ☕ Buy Me a Coffee
+            </a>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    st.caption("💡 Love the analysis? Share with friends or support the project!")
     
     st.markdown("---")
     
