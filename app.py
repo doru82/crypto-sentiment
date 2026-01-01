@@ -1287,7 +1287,7 @@ if 'results' in st.session_state:
     st.markdown("---")
     st.markdown("""
     <div style="text-align: center; color: #666; padding: 2rem 0;">
-        <p>Made with ❤️ by CryptoVibes | Not financial advice</p>
+        <p>Made with ❤️ by <a href="https://x.com/doruOlt" target="_blank" style="color: #667eea; text-decoration: none;">Doru</a> | <a href="https://github.com/doru82" target="_blank" style="color: #667eea; text-decoration: none;">GitHub</a> | Not financial advice</p>
         <p style="font-size: 0.9rem;">Data sources: Twitter, Reddit, NewsAPI, CryptoPanic, CoinGecko</p>
     </div>
     """, unsafe_allow_html=True)
