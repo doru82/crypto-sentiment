@@ -877,7 +877,7 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### 📊 Data Sources")
     
-    with st.expander("🐦 Crypto Twitter (CT)", expanded=True):
+    with st.expander(" X (CT)", expanded=True):
         ct_method = st.selectbox(
             "Method",
             ["Nitter (Free)", "RapidAPI", "All"],
