@@ -12,7 +12,7 @@ Real-time cryptocurrency sentiment analysis from multiple sources.
 
 ## Live Demo
 
-🔗 [Try it here](https://your-app-url.streamlit.app)
+🔗 [Try it here](https://cryptovibes.streamlit.app/)
 
 ## How to Use
 
@@ -57,4 +57,5 @@ crypto-market-sentiment/
 ├── requirements.txt          ← 6 linii cu librării
 ├── .gitignore               ← ~30 linii, fișiere de ignorat
 ├── README.md                ← Documentație
+
 └── (optional) DEPLOYMENT.md
