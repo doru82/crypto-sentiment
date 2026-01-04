@@ -4,3 +4,4 @@ requests==2.31.0
 vaderSentiment==3.3.2
 altair==5.2.0
 matplotlib==3.8.2
+python-dotenv
