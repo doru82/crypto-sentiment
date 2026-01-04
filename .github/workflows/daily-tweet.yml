@@ -18,7 +18,15 @@ jobs:
       
       - name: Install dependencies
         run: pip install -r requirements.txt
-      
+
+      - name: Debug API Key
+        env:
+          TYPEFULLY_API_KEY: ${{ secrets.TYPEFULLY_API_KEY }}
+        run: |
+          echo "API Key set: $(if [ -z "$TYPEFULLY_API_KEY" ]; then echo 'NO'; else echo 'YES'; fi)"
+          echo "API Key length: ${#TYPEFULLY_API_KEY}"
+          echo "First 10 chars: ${TYPEFULLY_API_KEY:0:10}"
+          
       - name: Run bot
         env:
           TYPEFULLY_API_KEY: ${{ secrets.TYPEFULLY_API_KEY }}
