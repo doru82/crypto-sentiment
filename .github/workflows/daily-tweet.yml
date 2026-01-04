@@ -30,4 +30,4 @@ jobs:
       - name: Run bot
         env:
           TYPEFULLY_API_KEY: ${{ secrets.TYPEFULLY_API_KEY }}
-        run: python typefully_bot.py
+        run: python bot_runner.py
