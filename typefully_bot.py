@@ -281,7 +281,7 @@ def run_daily_analysis():
     print("="*60)
     print(f"Length: {len(top5_tweet)} chars\n")
     
-    success1 = post_to_typefully_v2(social_set_id, top5_tweet, publish_now=False)
+    success1 = post_to_typefully_v2(social_set_id, top5_tweet, publish_now=True)
     
     if not success1:
         print("❌ Failed to post Top 5 tweet")
@@ -306,7 +306,7 @@ def run_daily_analysis():
         print("="*60)
         print(f"Length: {len(avax_tweet)} chars\n")
         
-        success2 = post_to_typefully_v2(social_set_id, avax_tweet, publish_now=False)
+        success2 = post_to_typefully_v2(social_set_id, avax_tweet, publish_now=True)
         
         if success2:
             print(f"✅ {SPECIAL_COIN} tweet posted!")
@@ -330,4 +330,5 @@ if __name__ == "__main__":
     print("🤖 CryptoVibes X Bot (Integrated with app.py)")
     print("=" * 60)
     
+
     run_daily_analysis()
